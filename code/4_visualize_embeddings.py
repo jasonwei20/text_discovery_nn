@@ -9,10 +9,10 @@ from nlp_utils import *
 if __name__ == "__main__":
 
     #all the data sources
-    vec_length = 200
-    word2vec_path = "word2vec/word2vec_200.p"
+    vec_length = 300
+    word2vec_path = "pickles/vocab_dicts.p"
     stop_words_path = "processed_data/stop_words.txt"
-    predictions_path = "outputs/nn_predictions.csv"
+    predictions_path = "outputs/predictions_embeddings_net.csv"
     tsne_output_path = "outputs/tsne.jpg"
     group_to_data_path = 'outputs/group_to_data.p'
     groups = ['mid', 'i_correct', 'i_incorrect', 'p_correct', 'p_incorrect']
@@ -22,8 +22,8 @@ if __name__ == "__main__":
 
     #load word embeddings and stop words
     print("loading word embeddings...")
-    word2vec = pickle.load( open( word2vec_path, "rb" ) )
-    print("embeddings loaded")
+    word2idx, idx2word, word2vec = pickle.load( open( word2vec_path, "rb" ) )
+    print(len(word2vec), "embeddings loaded")
     stop_words = get_stop_words(stop_words_path)
 
     #split the prediction data into groups
@@ -77,8 +77,8 @@ if __name__ == "__main__":
         ax.scatter(x, y, color=color, marker=marker, s=size, label=group)
         ax.set_title("Selection of Sentences from Israeli and Palestinian Narratives", fontsize=6.5)
         plt.axis('off')
-        for i, txt in enumerate(labels):
-            ax.annotate(txt, (x[i], y[i]), fontsize = 0.5)
+        # for i, txt in enumerate(labels):
+        #     ax.annotate(txt, (x[i], y[i]), fontsize = 0.5)
 
     plt.legend(prop={'size': 4})
     plt.savefig(tsne_output_path, dpi=900)

@@ -29,4 +29,15 @@ I then cluster the sentences by the following: sentences were added to a cluster
 
 Future work:
 - Thresholds were chosen arbitrarily and could be tuned.
-- Maybe don't use word embeddings from twitter on historical texts.
+
+## Miscellaneous Code
+
+Creating word to index, index to word, and word to vec dictionaries from a file:
+```
+python code/nlp_utils.py --function=gen_vocab_dicts
+```
+
+
+
+
+

@@ -42,14 +42,27 @@ def long_enough(line, threshold):
 
 if __name__ == "__main__":
 	lines = open(args.input_path, 'r',  encoding='latin-1').readlines()
+	print(len(lines))
 
 	output_lines = []
 	for line in lines:
-		output_line = get_only_chars(line)
-		output_line = delete_spaces(output_line)
-	
-		if long_enough(output_line, len_threshold):
-			output_lines.append(output_line)
+
+		if len(line) > 500:
+			sentences = line.split(".")
+			sentences = map(' '.join, zip(sentences[::2], sentences[1::2]))
+			for sentence in sentences:
+				output_line = get_only_chars(sentence)
+				output_line = delete_spaces(output_line)
+				
+				if long_enough(output_line, len_threshold):
+					output_lines.append(output_line)
+
+		else:
+			output_line = get_only_chars(line)
+			output_line = delete_spaces(output_line)
+		
+			if long_enough(output_line, len_threshold):
+				output_lines.append(output_line)
 
 	writer = open(args.output_path, 'w')
 	for line in output_lines:
