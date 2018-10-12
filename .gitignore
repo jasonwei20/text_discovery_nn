@@ -3,3 +3,4 @@ raw_data/*
 word2vec/*
 outputs/*
 pickles/*
+models/*

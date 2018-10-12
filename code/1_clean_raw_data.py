@@ -1,74 +1,42 @@
 #Jason Wei
 #Cleaning raw text files
 import re
-
 import argparse
 parser = argparse.ArgumentParser()
 parser.add_argument("--input_path", type=str)
 parser.add_argument("--output_path", type=str)
 args = parser.parse_args()
-len_threshold = 50
 
 def get_only_chars(line):
+
+	clean_line = ""
+
 	line = line.lower()
-	only_chars_line = []
+	line = line.replace("-", " ") #replace hyphens with spaces
+	line = line.replace("\t", " ")
+	line = line.replace("\n", " ")
 
 	for char in line:
 		if char in 'qwertyuiopasdfghjklzxcvbnm ':
-			only_chars_line.append(char)
+			clean_line += char
+		else:
+			clean_line += ' '
 
-	only_chars_line = ''.join(only_chars_line)
-
-
-	if len(only_chars_line) > 20:
-
-		while only_chars_line[0] == ' ':
-			only_chars_line = only_chars_line[1:]
-
-		while only_chars_line[-1] == ' ':
-			only_chars_line = only_chars_line[:-1]
-
-		return only_chars_line
-	else:
-		return ''
+	return clean_line
 
 def delete_spaces(line):
 	return re.sub(' +',' ',line)
 
-def long_enough(line, threshold):
-	if len(line) > threshold:
-		return True
-	return False
 
 if __name__ == "__main__":
-	lines = open(args.input_path, 'r',  encoding='latin-1').readlines()
-	print(len(lines))
 
-	output_lines = []
-	for line in lines:
+	line = open(args.input_path, 'r',  encoding='latin-1').read()
+	line = get_only_chars(line) #clean up the chars
+	line = delete_spaces(line)
 
-		if len(line) > 500:
-			sentences = line.split(".")
-			sentences = map(' '.join, zip(sentences[::2], sentences[1::2]))
-			for sentence in sentences:
-				output_line = get_only_chars(sentence)
-				output_line = delete_spaces(output_line)
-				
-				if long_enough(output_line, len_threshold):
-					output_lines.append(output_line)
-
-		else:
-			output_line = get_only_chars(line)
-			output_line = delete_spaces(output_line)
-		
-			if long_enough(output_line, len_threshold):
-				output_lines.append(output_line)
-
-	writer = open(args.output_path, 'w')
-	for line in output_lines:
-		writer.write(line+'\n')
-
-
+	writer = open(args.output_path, "w")
+	writer.write(line)
+	print(len(line.split(" ")))
 
 
 

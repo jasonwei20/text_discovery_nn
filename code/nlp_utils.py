@@ -212,11 +212,12 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     if args.function == "gen_vocab_dicts":
-        text_file_path = "processed_data/all_lines.txt"
+        text_file_path = "processed_data/all_lines_including_augment.txt"
         word2vec_txt_path = "word2vec/glove.840B.300d.txt"
         output_pickle_path = "pickles/vocab_dicts.p"
 
         gen_vocab_dicts(text_file_path, output_pickle_path)
+        print("vocab dicts generated in", output_pickle_path)
 
     if args.function == "print_word_frequencies":
 

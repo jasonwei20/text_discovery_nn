@@ -9,7 +9,7 @@
 
 
 ## Jason Wei
-## August 1, 2018
+## September 10, 2018
 ## jason.20@dartmouth.edu
 
 from nlp_utils import *
@@ -42,105 +42,85 @@ def get_x_y_data_embeddings(isr, pal, word2vec, stop_words):
 
     return x_data, y_data
 
-#get the bag of words representation of data
-def get_x_y_data_bag(isr, pal, word2idx, stop_words):
-
-    x_data = np.zeros((len(isr)+len(pal), len(word2idx)))
-    y_data = np.zeros((len(isr)+len(pal), 1))
-
-    for i in range(len(isr)):
-        line = isr[i]
-        words = line[:-1].split(' ')
-        for word in words:
-            if word not in stop_words:
-                x_data[i, word2idx[word]] = 0.01
-
-    for i in range(len(pal)):
-        line = pal[i]
-        words = line[:-1].split(' ')
-        for word in words:
-            if word not in stop_words:
-                x_data[len(isr)+i, word2idx[word]] = 0.01
-        y_data[len(isr)+i] = 1
-
-    x_data, y_data = sklearn.utils.shuffle(x_data, y_data, random_state=42)
-    print("x_data.shape:", x_data.shape)
-    print("y_data.shape:", y_data.shape)
-
-    return x_data, y_data
-
 #load the data
-def load_data(vocab_dicts_path, isr_path, pal_path, stop_words_path, format):
-
-    assert format in ['embeddings', 'bag']
+def load_all_data(vocab_dicts_path, isr_path, pal_path, stop_words_path):
 
     #load everything from the path
     word2idx, idx2word, word2vec = pickle.load(open(vocab_dicts_path, 'rb'))
-    isr_full = open(isr_path, 'r').readlines() #full data set
-    pal_full = open(pal_path, 'r').readlines() 
-    print(len(isr_full), "israeli lines loaded,", len(pal_full), "palestinian lines loaded")
+    isr = open(isr_path, 'r').readlines()
+    isr = [line.split('\t')[-1] for line in isr]
+    pal = open(pal_path, 'r').readlines() 
+    pal = [line.split('\t')[-1] for line in pal]
     stop_words = get_stop_words(stop_words_path)
 
-    shuffle(isr_full)
-    shuffle(pal_full)
-    isr_train = isr_full[:-200] 
-    pal_train = pal_full[:-200] 
-    isr_val = isr_full[-200:] #validation set
-    pal_val = pal_full[-200:]
-
-    #normalize distribution of labels (there are more palestinian lines)
-    isr_train = isr_train + isr_train + isr_train #training set
-    pal_train = pal_train + pal_train + pal_train
-    pal_train = pal_train[:len(isr_train)] 
-    print("data distribution for training set normalized to", len(isr_train), "and", len(pal_train))
-
-    #variables that we care about
-    x_data_full, y_data_full = None, None
-    x_data_train, y_data_train = None, None
-    x_data_val, y_data_val = None, None
     line_to_vec, vec_to_line = {}, {}
 
-    if format == 'embeddings':
+    # get the line to vec and vec to line
+    all_lines = isr + pal
+    for line in all_lines:
+        avg_vec = get_avg_vec(line, word2vec, stop_words)
+        line_to_vec[line] = avg_vec
+        vec_to_line[str(avg_vec)] = line
 
-        # get the line to vec and vec to line
-        all_lines = isr_full + pal_full
-        for line in all_lines:
-            avg_vec = get_avg_vec(line, word2vec, stop_words)
-            line_to_vec[line] = avg_vec
-            vec_to_line[str(avg_vec)] = line
-    
-        x_data_full, y_data_full = get_x_y_data_embeddings(isr_full, pal_full, word2vec, stop_words)
-        x_data_train, y_data_train = get_x_y_data_embeddings(isr_train, pal_train, word2vec, stop_words)
-        x_data_val, y_data_val = get_x_y_data_embeddings(isr_val, pal_val, word2vec, stop_words)
-    
-    if format == 'bag':
-        
-        # get the line to vec and vec to line
-        all_lines = isr_full + pal_full
-        x_data_temp = np.zeros((len(isr_full)+len(pal_full), len(word2idx)))
-        for i in range(len(all_lines)):
-            line = all_lines[i]
-            words = line[:-1].split(' ')
-            for word in words:
-                if word not in stop_words:
-                    x_data_temp[i, word2idx[word]] = 1
-            line_to_vec[line] = x_data_temp[i]
-            vec_to_line["".join(map(str, x_data_temp[i].tolist()))] = line
-
-        x_data_full, y_data_full = get_x_y_data_bag(isr_full, pal_full, word2idx, stop_words)
-        x_data_train, y_data_train = get_x_y_data_bag(isr_train, pal_train, word2idx, stop_words)
-        x_data_val, y_data_val = get_x_y_data_bag(isr_val, pal_val, word2idx, stop_words)    
-        
+    x_data, y_data = get_x_y_data_embeddings(isr, pal, word2vec, stop_words)
     print("line_to_vec and vec_to_line created with", len(line_to_vec), "pairs.")
 
-    return x_data_train, y_data_train, x_data_val, y_data_val, x_data_full, y_data_full, line_to_vec, vec_to_line
+    return x_data, y_data, line_to_vec, vec_to_line
+
+
+#load the data
+def load_train_data(vocab_dicts_path, isr_path, pal_path, stop_words_path):
+
+    #load everything from the path
+    word2idx, idx2word, word2vec = pickle.load(open(vocab_dicts_path, 'rb'))
+    isr = open(isr_path, 'r').readlines() #full data set
+    pal = open(pal_path, 'r').readlines() 
+    stop_words = get_stop_words(stop_words_path)
+
+    isr = isr + isr
+    isr = isr[:len(pal)] 
+
+    line_to_vec, vec_to_line = {}, {}
+
+    # get the line to vec and vec to line
+    all_lines = isr + pal
+    for line in all_lines:
+        avg_vec = get_avg_vec(line, word2vec, stop_words)
+        line_to_vec[line] = avg_vec
+        vec_to_line[str(avg_vec)] = line
+
+    x_data, y_data = get_x_y_data_embeddings(isr, pal, word2vec, stop_words)
+    print("line_to_vec and vec_to_line created with", len(line_to_vec), "pairs.")
+
+    return x_data, y_data, line_to_vec, vec_to_line
+
+
+#load the data
+def load_data(vocab_dicts_path, isr_path, pal_path, stop_words_path):
+
+    #load everything from the path
+    word2idx, idx2word, word2vec = pickle.load(open(vocab_dicts_path, 'rb'))
+    isr = open(isr_path, 'r').readlines() #full data set
+    pal = open(pal_path, 'r').readlines() 
+    stop_words = get_stop_words(stop_words_path)
+
+    line_to_vec, vec_to_line = {}, {}
+
+    # get the line to vec and vec to line
+    all_lines = isr + pal
+    for line in all_lines:
+        avg_vec = get_avg_vec(line, word2vec, stop_words)
+        line_to_vec[line] = avg_vec
+        vec_to_line[str(avg_vec)] = line
+
+    x_data, y_data = get_x_y_data_embeddings(isr, pal, word2vec, stop_words)
+    print("line_to_vec and vec_to_line created with", len(line_to_vec), "pairs.")
+
+    return x_data, y_data, line_to_vec, vec_to_line
 
 
 
-
-
-
-def train_model(x_data_train, y_data_train, classifier, format):
+def train_model(x_data_train, y_data_train, classifier):
 
     assert classifier in ['bayes', 'forest', 'svm', 'logistic', 'net']
     feature_size = x_data_train.shape[1]
@@ -170,12 +150,8 @@ def train_model(x_data_train, y_data_train, classifier, format):
     #two layer neural network in keras
     if classifier == 'net':
 
-        if format == 'embeddings':
-            nb_epochs = 30
-            dropout_rate = 0.2
-        elif format == 'bag':
-            nb_epochs = 30
-            dropout_rate = 0.2
+        nb_epochs = 30
+        dropout_rate = 0.2
 
         model = Sequential()
         model.add(Dense(64, input_dim=feature_size))
@@ -190,34 +166,42 @@ def train_model(x_data_train, y_data_train, classifier, format):
 
     return model
 
-def evaluate_accuracy(model, x_data, y_data, classifier, format, set_type):
+
+def get_predictions_probabilities(model, x_data, classifier):
+
+    y_predict_probs = None
+    if classifier == 'net':
+        y_predict_probs = model.predict(x_data)
+    else:
+        y_predict_probs = model.predict_proba(x_data)[:, 1]
+        y_predict_probs = np.expand_dims(y_predict_probs, axis=1)
+    return y_predict_probs
+
+def evaluate_accuracy(model, x_data, y_data, classifier, set_type):
 
     y_predict_probs = get_predictions_probabilities(model, x_data, classifier)
     y_predict_classes = to_binary(y_predict_probs)
     print(set_type, "set accuracy:", accuracy_score(y_data, y_predict_classes))
 
-def output_predictions(model, x_data, y_data, analysis_path, classifier, format):
+def output_predictions(model, x_data, y_data, analysis_path, classifier):
 
     #test the neural net on the test set
     y_predict_probs = None
     if classifier == 'net':
-        y_predict_probs = model.predict(x_data_full)
+        y_predict_probs = model.predict(x_data)
 
     else:
-        y_predict_probs = model.predict_proba(x_data_full)[:, 1]
+        y_predict_probs = model.predict_proba(x_data)[:, 1]
         y_predict_probs = np.expand_dims(y_predict_probs, axis=1)
 
     y_predict_classes = to_binary(y_predict_probs)
-    print("final full set accuracy:", accuracy_score(y_data_full, y_predict_classes))
+    print("final full set accuracy:", accuracy_score(y_data, y_predict_classes))
 
     #sort and output each sentence with its true label, predicted label, and predicted probability
     predicted_prob_to_data = {}
     for i in range(x_data.shape[0]):
         vec = x_data[i]
-        if format == 'embeddings':
-            sentence = vec_to_line[str(vec)]
-        elif format == 'bag':
-            sentence = vec_to_line["".join(map(str, vec.tolist()))]
+        sentence = vec_to_line_all[str(vec)]
         true_label = y_data[i][0]
         predicted_label = y_predict_classes[i][0]
         predicted_prob = y_predict_probs[i][0]
@@ -232,18 +216,6 @@ def output_predictions(model, x_data, y_data, analysis_path, classifier, format)
     writer.close()
     
     print("output each sentence with its true label, predicted label, and predicted probability in", analysis_path)
-
-
-def get_predictions_probabilities(model, x_data, classifier):
-
-    y_predict_probs = None
-    if classifier == 'net':
-        y_predict_probs = model.predict(x_data)
-    else:
-        y_predict_probs = model.predict_proba(x_data)[:, 1]
-        y_predict_probs = np.expand_dims(y_predict_probs, axis=1)
-    return y_predict_probs
-
 
 def get_prediction_distribution(y_predict_probs, bins):
 
@@ -270,6 +242,16 @@ def get_dist_differential(model, x_data, classifier):
 
     return loss
 
+def get_predictions_probabilities(model, x_data, classifier):
+
+    y_predict_probs = None
+    if classifier == 'net':
+        y_predict_probs = model.predict(x_data)
+    else:
+        y_predict_probs = model.predict_proba(x_data)[:, 1]
+        y_predict_probs = np.expand_dims(y_predict_probs, axis=1)
+    return y_predict_probs
+
 def plot_histo_distribution(model, x_data, classifier, num_bins):
 
     y_predict_probs = get_predictions_probabilities(model, x_data, classifier)
@@ -280,100 +262,38 @@ def plot_histo_distribution(model, x_data, classifier, num_bins):
     plt.ylabel('Number of Samples')
     plt.savefig("outputs/distribution.png", dpi=400)
 
-def predict_on_article(model, article_path, vocab_dicts_path, classifier):
-    word2idx, idx2word, word2vec = pickle.load(open(vocab_dicts_path, 'rb'))
-    stop_words = get_stop_words(stop_words_path)
-    lines = open(article_path, 'r').readlines()
-    lines = [line[:-1] for line in lines if len(line) > 200]
-    x_data_article = []
-
-    for line in lines:
-        avg_vec = get_avg_vec(line, word2vec, stop_words)
-        x_data_article.append(avg_vec)
-    
-    x_data_article = np.asarray(x_data_article)
-    y_predict_probs = get_predictions_probabilities(model, x_data_article, classifier)
-    
-    num_isr = 0
-    num_pal = 0
-    prob_to_line = {}
-
-    for i in range(len(y_predict_probs)):
-        #print(y_predict_probs[i], lines[i])
-        prob_to_line[y_predict_probs[i][0]] = lines[i]
-        if y_predict_probs[i] > 0.5:
-            num_pal += 1
-        elif y_predict_probs[i] < 0.5:
-            num_isr += 1
-    print(num_isr, num_pal)
-    print(np.mean(y_predict_probs))
-
-    sample_writer  = open("outputs/oped_samples.tsv", 'w')
-    import collections
-    od = collections.OrderedDict(reversed(sorted(prob_to_line.items())))
-    for k, v in od.items():
-        sample_writer.write(str(k) + '\t' + str(v) + '\n')
-
 
 
 if __name__ == "__main__":    
 
     import argparse
     parser = argparse.ArgumentParser()
-    parser.add_argument("--format", type=str)
     parser.add_argument("--classifier", type=str)
     args = parser.parse_args()
 
     #input parameters
     vocab_dicts_path = "pickles/vocab_dicts.p"
-    isr_path = "processed_data/israeli_all.txt"
-    pal_path = "processed_data/palestinian_all.txt"
-    stop_words_path = "processed_data/stop_and_extreme_words.txt"
-    analysis_path = "outputs/predictions_"+args.format+"_"+args.classifier+".csv"
-    article_path = "processed_data/pal_opeds.txt"
+    stop_words_path = "processed_data/stop_words.txt"
+    analysis_path = "outputs/predictions_"+args.classifier+".csv"
 
-    #load dataset
-    x_data_train, y_data_train, x_data_val, y_data_val, x_data_full, y_data_full, line_to_vec, vec_to_line = load_data(vocab_dicts_path, isr_path, pal_path, stop_words_path, args.format)
+    x_all, y_all, line_to_vec_all, vec_to_line_all = load_all_data(vocab_dicts_path, "processed_data/nn/i_all.txt", "processed_data/nn/p_all.txt", stop_words_path)
+    x_train, y_train, line_to_vec_train, vec_to_line_train = load_train_data(vocab_dicts_path, "processed_data/nn/i_train.txt", "processed_data/nn/p_train.txt", stop_words_path)
+    x_dev, y_dev, line_to_vec_dev, vec_to_line_dev = load_data(vocab_dicts_path, "processed_data/nn/i_dev.txt", "processed_data/nn/p_dev.txt", stop_words_path)
+    x_test, y_test, line_to_vec_test, vec_to_line_test = load_data(vocab_dicts_path, "processed_data/nn/i_test.txt", "processed_data/nn/p_test.txt", stop_words_path)
+    print(x_test.shape, y_test.shape)
 
-    model = train_model(x_data_train, y_data_train, args.classifier, args.format)
-
-    evaluate_accuracy(model, x_data_train, y_data_train, args.classifier, args.format, "train")
-    evaluate_accuracy(model, x_data_val, y_data_val, args.classifier, args.format, "val")
-    evaluate_accuracy(model, x_data_full, y_data_full, args.classifier, args.format, "full")
-    #output_predictions(model, x_data_full, y_data_full, analysis_path, args.classifier, args.format)
-    #plot_histo_distribution(model, x_data_full, args.classifier, 50)
-    loss = get_dist_differential(model, x_data_full, args.classifier)
+    model = train_model(x_train, y_train, args.classifier)
+    evaluate_accuracy(model, x_train, y_train, args.classifier, "train")
+    evaluate_accuracy(model, x_dev, y_dev, args.classifier, "val")
+    evaluate_accuracy(model, x_test, y_test, args.classifier, "test")
+    evaluate_accuracy(model, x_all, y_all, args.classifier, "all")
+    output_predictions(model, x_all, y_all, analysis_path, args.classifier)
+    plot_histo_distribution(model, x_all, args.classifier, 50)
+    loss = get_dist_differential(model, x_all, args.classifier)
     print(loss)
-    predict_on_article(model, article_path, vocab_dicts_path, args.classifier)
 
-
-# logistic regression on embeddings?????
-# train set accuracy: 0.8060361399461745
-# val set accuracy: 0.78
-# final full set accuracy: 0.801713062098501
-# output each sentence with its true label, predicted label, and predicted probability in outputs/predictions_embeddings_logistic.csv
-# 0.0028925053533190585
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+    vec_dicts = (line_to_vec_all, vec_to_line_all)
+    pickle.dump( vec_dicts, open( "vec_dicts.p", "wb" ) )
 
 
 
